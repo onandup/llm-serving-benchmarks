@@ -62,6 +62,18 @@ The simulator demonstrates why scheduler design is a critical component of large
 
 Aggressive batching policies improve utilization but may negatively impact p95/p99 latency under bursty workloads.
 
+## Throughput by Policy
+
+![Throughput](results/charts/throughput_by_policy.png)
+
+## P99 Latency by Policy
+
+![P99 Latency](results/charts/p99_latency_by_policy.png)
+
+## Wait Time by Policy
+
+![Wait Time](results/charts/wait_time_by_policy.png)
+
 ## How to run
 
 ```bash
