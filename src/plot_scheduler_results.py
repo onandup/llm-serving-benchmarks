@@ -1,40 +1,66 @@
-import os
-from pathlib import Path
-
-os.environ.setdefault("MPLCONFIGDIR", str(Path(__file__).resolve().parent / ".matplotlib"))
-
 import pandas as pd
-import matplotlib
-
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from scheduler_simulator import simulate
 
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-RESULTS_DIR = SCRIPT_DIR.parent / "results"
-CHARTS_DIR = RESULTS_DIR / "charts"
+policies = ["fifo", "shortest_job_first", "priority"]
+batch_sizes = [1, 2, 4, 8, 16, 32]
 
-CHARTS_DIR.mkdir(parents=True, exist_ok=True)
+rows = []
+for policy in policies:
+    for batch_size in batch_sizes:
+        rows.append(simulate(max_batch_size=batch_size, policy=policy))
 
-rows = [simulate(batch_size) for batch_size in [1, 2, 4, 8, 16, 32]]
 df = pd.DataFrame(rows)
-
 print(df)
 
-df.to_csv(RESULTS_DIR / "scheduler_results.csv", index=False)
+df.to_csv("results/scheduler_results.csv", index=False)
 
 plt.figure()
-plt.plot(df["batch_size"], df["throughput_reqs_per_step"], marker="o")
+for policy in policies:
+    subset = df[df["policy"] == policy]
+    plt.plot(
+        subset["batch_size"],
+        subset["throughput_reqs_per_step"],
+        marker="o",
+        label=policy,
+    )
+
 plt.xlabel("Max Batch Size")
 plt.ylabel("Throughput: Requests / Step")
-plt.title("Throughput vs Batch Size")
-plt.savefig(CHARTS_DIR / "throughput_vs_batch_size.png", bbox_inches="tight")
+plt.title("Throughput vs Batch Size by Scheduling Policy")
+plt.legend()
+plt.savefig("results/charts/throughput_by_policy.png", bbox_inches="tight")
 
 plt.figure()
-plt.plot(df["batch_size"], df["p99_latency"], marker="o")
+for policy in policies:
+    subset = df[df["policy"] == policy]
+    plt.plot(
+        subset["batch_size"],
+        subset["p99_latency"],
+        marker="o",
+        label=policy,
+    )
+
 plt.xlabel("Max Batch Size")
 plt.ylabel("P99 Latency")
-plt.title("P99 Latency vs Batch Size")
-plt.savefig(CHARTS_DIR / "p99_latency_vs_batch_size.png", bbox_inches="tight")
+plt.title("P99 Latency vs Batch Size by Scheduling Policy")
+plt.legend()
+plt.savefig("results/charts/p99_latency_by_policy.png", bbox_inches="tight")
+
+plt.figure()
+for policy in policies:
+    subset = df[df["policy"] == policy]
+    plt.plot(
+        subset["batch_size"],
+        subset["avg_wait_time"],
+        marker="o",
+        label=policy,
+    )
+
+plt.xlabel("Max Batch Size")
+plt.ylabel("Average Wait Time")
+plt.title("Average Wait Time vs Batch Size by Scheduling Policy")
+plt.legend()
+plt.savefig("results/charts/wait_time_by_policy.png", bbox_inches="tight")

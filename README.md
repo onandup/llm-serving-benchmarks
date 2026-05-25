@@ -20,6 +20,47 @@ This repo starts with a scheduler simulator inspired by continuous batching syst
 - Throughput measurement
 - p95 / p99 latency measurement
 - Charts for throughput and tail latency
+- Scheduling policies and its effects of throughput/latency for different batch sizes
+
+# Findings
+
+## 1. Larger batches improve throughput
+
+As batch size increases, throughput improves significantly because more requests are processed concurrently.
+
+This mirrors production LLM serving systems such as vLLM, where continuous batching improves GPU utilization.
+
+## 2. Tail latency increases with aggressive batching
+
+While throughput improves, p99 latency and wait time can also increase under larger batch sizes.
+
+This demonstrates the core production tradeoff in LLM inference systems:
+
+- maximizing GPU utilization
+vs
+- maintaining low tail latency
+
+## 3. Scheduling policy impacts fairness and latency
+
+Different scheduling policies produce different latency characteristics.
+
+### FIFO
+- simple and fair
+- can suffer from head-of-line blocking
+
+### Shortest Job First
+- improves average latency
+- risks starving large requests
+
+### Priority Scheduling
+- useful for latency-sensitive workloads
+- lower-priority requests may wait longer
+
+## 4. Continuous batching requires careful scheduler policy
+
+The simulator demonstrates why scheduler design is a critical component of large-scale inference systems.
+
+Aggressive batching policies improve utilization but may negatively impact p95/p99 latency under bursty workloads.
 
 ## How to run
 
