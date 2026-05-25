@@ -1,26 +1,29 @@
 # LLM Serving Benchmarks
 
-## Overview
-This project explores LLM serving tradeoffs: continuous batching, throughput, p99 latency, and scheduler behavior.
+This project explores production LLM serving tradeoffs: scheduler policy, batching, throughput, and tail latency.
 
 ## Why this matters
-Production LLM inference is constrained by GPU utilization, memory efficiency, request scheduling, and tail latency.
 
-## Current Features
-- Scheduler simulator
+LLM inference performance depends on:
+- GPU utilization
+- memory efficiency
+- batching strategy
+- request scheduling
+- p95/p99 latency
+
+This repo starts with a scheduler simulator inspired by continuous batching systems like vLLM.
+
+## Current features
+
+- Request arrival simulation
 - Batch size sweep
-- Throughput and p99 latency charts
+- Throughput measurement
+- p95 / p99 latency measurement
+- Charts for throughput and tail latency
 
 ## How to run
+
+```bash
 pip install -r requirements.txt
 python src/scheduler_simulator.py
 python src/plot_scheduler_results.py
-
-## Results
-Include generated charts here.
-
-## Next Steps
-- Add FIFO vs shortest-job-first scheduling
-- Add prefill/decode modeling
-- Add workload classes
-- Add KV cache visualizer
