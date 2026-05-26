@@ -6,6 +6,7 @@ A systems-focused exploration of production LLM inference tradeoffs including:
 * scheduler policy
 * throughput vs latency
 * prefill vs decode behavior
+* KV cache memory pressure
 * TTFT (Time To First Token)
 * TPOT (Time Per Output Token)
 
@@ -23,12 +24,14 @@ LLM serving performance depends on:
 * scheduler policy
 * request fairness
 * tail latency (p95 / p99)
+* KV cache management
 
 Modern serving systems like vLLM improve inference performance through:
 
 * continuous batching
 * efficient KV cache management
 * dynamic scheduling
+* paged KV allocation
 
 This project builds intuition for those tradeoffs through simulation and visualization.
 
@@ -73,6 +76,21 @@ This mirrors real-world LLM inference systems.
 
 ---
 
+## KV Cache Memory Simulation
+
+The simulator models:
+
+* KV cache block allocation
+* GPU memory pressure
+* request admission constraints
+* KV cache utilization
+* concurrency limits imposed by memory
+
+This simulates one of the central bottlenecks in production LLM serving systems:
+GPU memory exhaustion caused by KV cache growth.
+
+---
+
 # Metrics Collected
 
 The simulator tracks:
@@ -84,6 +102,9 @@ The simulator tracks:
 * P99 latency
 * TTFT (Time To First Token)
 * TPOT (Time Per Output Token)
+* Average KV cache utilization
+* Peak KV cache utilization
+* Request rejection / admission pressure
 
 ---
 
@@ -93,10 +114,13 @@ The simulator tracks:
 src/
   scheduler_simulator.py
   plot_scheduler_results.py
+  kv_cache_simulator.py
+  plot_kv_cache_results.py
 
 results/
   charts/
   scheduler_results.csv
+  kv_cache_results.csv
 ```
 
 ---
@@ -109,16 +133,28 @@ results/
 pip install -r requirements.txt
 ```
 
-## Run simulator
+## Run scheduler simulator
 
 ```bash
 python src/scheduler_simulator.py
 ```
 
-## Generate charts
+## Generate scheduler charts
 
 ```bash
 python src/plot_scheduler_results.py
+```
+
+## Run KV cache simulator
+
+```bash
+python src/kv_cache_simulator.py
+```
+
+## Generate KV cache charts
+
+```bash
+python src/plot_kv_cache_results.py
 ```
 
 Charts are generated under:
@@ -179,6 +215,20 @@ This reflects real-world inference behavior where long context windows increase:
 * attention compute
 * KV cache usage
 * first-token latency
+
+---
+
+## 5. KV cache capacity directly limits concurrency
+
+The KV cache simulation demonstrates that GPU memory becomes a hard upper bound on concurrent request execution.
+
+As KV cache utilization approaches capacity:
+
+* request admission becomes constrained
+* wait times increase
+* throughput gains diminish
+
+This mirrors real-world serving systems where KV cache memory pressure is often the dominant serving bottleneck.
 
 ---
 
@@ -244,6 +294,8 @@ However:
 * large requests may experience starvation
 * fairness degrades under skewed workloads
 
+This mirrors tradeoffs seen in real serving systems where latency optimization can negatively impact workload fairness.
+
 ### Priority Scheduling
 
 Priority scheduling improves responsiveness for critical workloads but introduces the possibility of sustained delays for lower-priority requests.
@@ -284,25 +336,34 @@ This explains why decode often becomes the dominant bottleneck in production ser
 
 ---
 
-## 5. TTFT grows rapidly with prompt size
+## 5. KV cache memory pressure is a first-class serving constraint
 
-The simulator models TTFT as a function of prompt length, demonstrating how longer contexts increase:
+The KV cache simulation highlighted that memory management is just as important as compute scheduling in large-scale inference systems.
 
-* first-token latency
-* queue occupancy
-* resource consumption
+Even when compute capacity exists:
 
-This aligns with production observations where long-context requests:
+* requests may still be blocked due to KV cache exhaustion
+* concurrency can collapse under large-context workloads
+* memory pressure can dominate serving efficiency
 
-* reduce concurrency
-* increase memory pressure
-* negatively impact batching efficiency
-
-This is one of the major scaling challenges for modern LLM systems.
+This explains why systems such as vLLM introduced paged KV cache allocation mechanisms like PagedAttention.
 
 ---
 
-## 6. Throughput optimization alone is not sufficient
+## 6. Prompt tokens and generated tokens behave differently in KV cache growth
+
+One important modeling insight from this project was understanding that:
+
+* prompt token KV cache exists immediately after prefill
+* generated tokens incrementally grow KV cache during decode
+
+This distinction is important because decode-phase memory growth can progressively reduce concurrency over time.
+
+This is one of the central scalability challenges in modern LLM serving systems.
+
+---
+
+## 7. Throughput optimization alone is not sufficient
 
 An important systems insight from this project is that the “best” scheduler depends on workload characteristics.
 
@@ -318,17 +379,18 @@ This is why modern inference systems require sophisticated schedulers rather tha
 
 ---
 
-## 7. Why vLLM-style systems matter
+## 8. Why vLLM-style systems matter
 
 This project helped build intuition for why systems such as vLLM introduced:
 
 * continuous batching
 * dynamic scheduling
 * efficient KV cache management
+* paged KV allocation
 
 Traditional static batching approaches leave significant compute capacity underutilized and struggle under heterogeneous workloads.
 
-The simulator demonstrates how scheduler efficiency becomes a first-class concern in large-scale inference serving systems.
+The simulator demonstrates how scheduler efficiency and memory efficiency become first-class concerns in large-scale inference serving systems.
 
 ---
 
@@ -370,19 +432,43 @@ The simulator demonstrates how scheduler efficiency becomes a first-class concer
 
 ---
 
+## KV Throughput vs Batch Size
+
+![KV Throughput](results/charts/kv_throughput_vs_batch_size.png)
+
+---
+
+## KV P99 Latency vs Batch Size
+
+![KV P99](results/charts/kv_p99_latency_vs_batch_size.png)
+
+---
+
+## Average KV Cache Utilization
+
+![KV Avg Utilization](results/charts/kv_avg_memory_utilization.png)
+
+---
+
+## Peak KV Cache Utilization
+
+![KV Peak Utilization](results/charts/kv_peak_memory_utilization.png)
+
+---
+
 # Future Improvements
 
 Planned additions:
 
+* unified serving simulator combining scheduling + KV cache growth
 * KV cache paging simulation
-* Memory fragmentation modeling
-* Continuous batching improvements
-* Multi-tenant serving workloads
-* GPU memory pressure simulation
-* Long-context workload simulation
-* Speculative decoding simulation
-* Dynamic token-level scheduling
-* Decode prioritization policies
+* memory fragmentation modeling
+* dynamic token-level scheduling
+* speculative decoding simulation
+* multi-tenant serving workloads
+* long-context workload simulation
+* decode prioritization policies
+* realistic decode-phase KV cache growth
 
 ---
 
