@@ -17,50 +17,63 @@ print(df)
 
 df.to_csv("results/scheduler_results.csv", index=False)
 
-plt.figure()
-for policy in policies:
-    subset = df[df["policy"] == policy]
-    plt.plot(
-        subset["batch_size"],
-        subset["throughput_reqs_per_step"],
-        marker="o",
-        label=policy,
-    )
 
-plt.xlabel("Max Batch Size")
-plt.ylabel("Throughput: Requests / Step")
-plt.title("Throughput vs Batch Size by Scheduling Policy")
-plt.legend()
-plt.savefig("results/charts/throughput_by_policy.png", bbox_inches="tight")
+def plot_metric(metric, ylabel, title, filename):
+    plt.figure()
+    for policy in policies:
+        subset = df[df["policy"] == policy]
+        plt.plot(
+            subset["batch_size"],
+            subset[metric],
+            marker="o",
+            label=policy,
+        )
 
-plt.figure()
-for policy in policies:
-    subset = df[df["policy"] == policy]
-    plt.plot(
-        subset["batch_size"],
-        subset["p99_latency"],
-        marker="o",
-        label=policy,
-    )
+    plt.xlabel("Max Batch Size")
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.legend()
+    plt.savefig(f"results/charts/{filename}", bbox_inches="tight")
 
-plt.xlabel("Max Batch Size")
-plt.ylabel("P99 Latency")
-plt.title("P99 Latency vs Batch Size by Scheduling Policy")
-plt.legend()
-plt.savefig("results/charts/p99_latency_by_policy.png", bbox_inches="tight")
 
-plt.figure()
-for policy in policies:
-    subset = df[df["policy"] == policy]
-    plt.plot(
-        subset["batch_size"],
-        subset["avg_wait_time"],
-        marker="o",
-        label=policy,
-    )
+plot_metric(
+    "throughput_reqs_per_step",
+    "Throughput: Requests / Step",
+    "Throughput vs Batch Size by Scheduling Policy",
+    "throughput_by_policy.png",
+)
 
-plt.xlabel("Max Batch Size")
-plt.ylabel("Average Wait Time")
-plt.title("Average Wait Time vs Batch Size by Scheduling Policy")
-plt.legend()
-plt.savefig("results/charts/wait_time_by_policy.png", bbox_inches="tight")
+plot_metric(
+    "p99_latency",
+    "P99 End-to-End Latency",
+    "P99 End-to-End Latency vs Batch Size by Scheduling Policy",
+    "p99_latency_by_policy.png",
+)
+
+plot_metric(
+    "avg_wait_time",
+    "Average Wait Time",
+    "Average Wait Time vs Batch Size by Scheduling Policy",
+    "wait_time_by_policy.png",
+)
+
+plot_metric(
+    "avg_ttft",
+    "Average TTFT",
+    "Average Time to First Token vs Batch Size",
+    "avg_ttft_by_policy.png",
+)
+
+plot_metric(
+    "p99_ttft",
+    "P99 TTFT",
+    "P99 Time to First Token vs Batch Size",
+    "p99_ttft_by_policy.png",
+)
+
+plot_metric(
+    "avg_tpot",
+    "Average TPOT",
+    "Average Time Per Output Token vs Batch Size",
+    "avg_tpot_by_policy.png",
+)
