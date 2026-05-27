@@ -456,11 +456,244 @@ The simulator demonstrates how scheduler efficiency and memory efficiency become
 
 ---
 
+# Unified Serving Simulator
+
+The repository now includes a unified serving simulator that combines:
+
+* scheduler policy
+* prefill vs decode behavior
+* KV cache allocation
+* decode-phase KV cache growth
+* memory-aware admission control
+* queueing behavior
+* throughput and latency analysis
+
+This models a simplified production-style LLM serving stack inspired by systems such as vLLM.
+
+---
+
+## Unified Simulator Features
+
+The unified simulator models:
+
+### Request Lifecycle
+
+Each request includes:
+
+* prompt tokens
+* generated output tokens
+* scheduler priority
+* prefill phase
+* decode phase
+* KV cache growth over time
+
+---
+
+### Scheduler Policies
+
+Supported policies:
+
+* FIFO
+* Shortest Job First
+* Priority Scheduling
+
+---
+
+### KV Cache Memory Management
+
+The simulator models:
+
+* KV block allocation
+* memory-aware request admission
+* decode-time KV growth
+* KV block release on completion
+* GPU memory pressure
+
+---
+
+### Decode-Phase KV Growth
+
+One important improvement in the unified simulator is modeling incremental KV cache growth during decode.
+
+The simulator now distinguishes:
+
+* prompt token KV cache allocated during prefill
+* generated token KV cache added gradually during decode
+
+This better reflects real-world inference behavior.
+
+---
+
+# Unified Simulator Metrics
+
+The unified simulator tracks:
+
+* throughput
+* end-to-end latency
+* p95/p99 latency
+* TTFT
+* TPOT
+* queue depth
+* average KV utilization
+* peak KV utilization
+* memory-blocked events
+* request admission pressure
+
+---
+
+# Running the Unified Simulator
+
+## Run unified simulator
+
+```bash
+python src/unified_serving_simulator.py
+```
+
+## Generate unified simulator charts
+
+```bash
+python src/plot_unified_results.py
+```
+
+---
+
+# Unified Simulator Findings
+
+## 1. Memory pressure and scheduler behavior are tightly coupled
+
+One of the most important learnings from the unified simulator is that scheduling efficiency cannot be analyzed independently from memory behavior.
+
+As KV cache utilization increases:
+
+* request admission slows
+* queue depth grows
+* tail latency increases
+
+This demonstrates why modern inference systems require memory-aware schedulers.
+
+---
+
+## 2. Long-lived decode workloads reduce concurrency over time
+
+The unified simulator models decode-phase KV cache growth, showing that requests progressively consume more memory during generation.
+
+This creates an important serving effect:
+
+* concurrency degrades dynamically during long generations
+* admission pressure increases over time
+* throughput eventually plateaus under memory pressure
+
+This is a major challenge in production LLM serving systems.
+
+---
+
+## 3. Memory residency time becomes a critical scalability constraint
+
+The simulator demonstrates that concurrency is constrained not only by compute capacity but also by:
+
+* how long requests occupy KV cache memory
+* how quickly memory can be reclaimed
+* how efficiently memory is allocated
+
+This helps explain why modern serving systems emphasize:
+
+* paging
+* memory reuse
+* continuous batching
+* efficient KV allocation
+
+---
+
+## 4. Scheduler policy influences memory pressure indirectly
+
+Different scheduling policies affect:
+
+* queue growth
+* request completion order
+* memory residency duration
+* decode overlap
+
+This means scheduler policy impacts both:
+
+* latency behavior
+* memory efficiency
+
+An important insight is that scheduler optimization and memory optimization are deeply interconnected in large-scale inference systems.
+
+---
+
+## 5. Decode-phase memory growth is operationally dangerous
+
+The simulator demonstrates that generated tokens progressively increase memory usage over time.
+
+This means:
+
+* long generations can unexpectedly reduce available concurrency
+* memory utilization may spike even after admission succeeds
+* systems may become unstable under long-context workloads
+
+This is one of the reasons long-context serving remains operationally challenging at scale.
+
+---
+
+## 6. Why PagedAttention-style systems matter
+
+The unified simulator helped build intuition for why systems such as vLLM introduced:
+
+* paged KV cache allocation
+* dynamic block management
+* memory-efficient continuous batching
+
+Without efficient paging strategies:
+
+* fragmentation increases
+* memory reuse becomes inefficient
+* concurrency collapses under heterogeneous workloads
+
+The simulator demonstrates that memory efficiency becomes a first-class concern in modern inference systems.
+
+---
+
+# Unified Simulator Charts
+
+## Unified Throughput vs Batch Size
+
+![Unified Throughput](results/charts/unified_throughput_by_kv_blocks.png)
+
+---
+
+## Unified P99 Latency vs Batch Size
+
+![Unified P99 Latency](results/charts/unified_p99_latency_by_kv_blocks.png)
+
+---
+
+## Unified KV Utilization vs Batch Size
+
+![Unified KV Utilization](results/charts/unified_memory_utilization_by_kv_blocks.png)
+
+---
+
+## Unified Average TTFT by Policy
+
+![Unified TTFT](results/charts/unified_avg_ttft_by_policy.png)
+
+---
+
+## Unified Memory Blocking by Policy
+
+![Unified Memory Blocking](results/charts/unified_memory_blocking_by_policy.png)
+
+---
+
+## Unified Queue Depth by Policy
+
+![Unified Queue Depth](results/charts/unified_queue_depth_by_policy.png)
+
 # Future Improvements
 
 Planned additions:
 
-* unified serving simulator combining scheduling + KV cache growth
 * KV cache paging simulation
 * memory fragmentation modeling
 * dynamic token-level scheduling
@@ -480,3 +713,4 @@ This project is heavily inspired by:
 * PagedAttention
 * modern continuous batching inference systems
 * large-scale production LLM serving architectures
+
