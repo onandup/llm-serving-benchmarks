@@ -690,12 +690,198 @@ The simulator demonstrates that memory efficiency becomes a first-class concern 
 
 ![Unified Queue Depth](results/charts/unified_queue_depth_by_policy.png)
 
+# KV Cache Fragmentation Simulation
+
+The repository now includes a fragmentation simulator comparing:
+
+* contiguous KV cache allocation
+* paged/block-based KV allocation
+
+This models one of the key architectural insights behind systems such as vLLM and PagedAttention.
+
+---
+
+## Why Fragmentation Matters
+
+Traditional contiguous memory allocation strategies can fail even when sufficient total free memory exists.
+
+Example:
+
+```text id="0pnrkc"
+Free blocks:
+[ ][X][ ][X][ ][X]
+
+Need:
+3 contiguous blocks
+```
+
+Even though 3 total blocks are free, allocation fails because the memory is fragmented.
+
+This becomes increasingly problematic under:
+
+* heterogeneous request sizes
+* long-lived decode workloads
+* dynamic request arrival patterns
+
+---
+
+## Paged Allocation
+
+Paged allocation removes the requirement for contiguous memory.
+
+Instead:
+
+```text id="13gh9y"
+logical KV layout
+!=
+physical memory layout
+```
+
+Requests are allocated arbitrary free blocks/pages.
+
+This significantly improves:
+
+* memory reuse
+* allocation success rate
+* concurrency
+* GPU utilization
+
+This is one of the core ideas behind PagedAttention.
+
+---
+
+# Fragmentation Simulator Features
+
+The simulator models:
+
+* contiguous memory allocation
+* paged/block allocation
+* allocation failures
+* fragmentation-induced failures
+* random request arrivals
+* heterogeneous request sizes
+* memory release and reuse
+
+---
+
+# Running the Fragmentation Simulator
+
+## Run fragmentation simulator
+
+```bash id="6hql2o"
+python src/fragmentation_simulator.py
+```
+
+## Generate fragmentation charts
+
+```bash id="ye6jz8"
+python src/plot_fragmentation_results.py
+```
+
+---
+
+# Fragmentation Findings
+
+## 1. Contiguous allocation suffers from fragmentation collapse
+
+The simulator demonstrates that contiguous allocation strategies experience increasing allocation failures over time due to fragmentation.
+
+Importantly:
+
+* failures occur even when sufficient total free memory exists
+* memory becomes unusable because free space is non-contiguous
+
+This is one of the core scalability problems in traditional KV cache allocation approaches.
+
+---
+
+## 2. Paged allocation significantly improves allocation efficiency
+
+Paged allocation avoids fragmentation-induced failures because requests can occupy arbitrary free blocks.
+
+This leads to:
+
+* higher allocation success rates
+* improved memory reuse
+* more stable concurrency
+* lower memory waste
+
+This demonstrates why block-based KV allocation became foundational in modern serving systems.
+
+---
+
+## 3. Fragmentation is workload dependent
+
+The simulator shows fragmentation worsening under:
+
+* heterogeneous request sizes
+* random request release timing
+* bursty workloads
+
+Large long-lived requests create allocation holes that progressively reduce allocator efficiency.
+
+This mirrors production inference serving behavior.
+
+---
+
+## 4. Memory efficiency directly impacts throughput
+
+As fragmentation increases:
+
+* allocation failures rise
+* concurrency decreases
+* throughput degrades
+
+This demonstrates that serving throughput is strongly influenced by memory allocator efficiency, not just raw GPU compute.
+
+---
+
+## 5. Why PagedAttention matters
+
+The fragmentation simulation helped build intuition for why systems such as vLLM introduced:
+
+* paged KV allocation
+* block-based memory management
+* logical-to-physical KV indirection
+
+Without paging:
+
+* fragmentation accumulates
+* memory reuse deteriorates
+* serving efficiency collapses under heterogeneous workloads
+
+PagedAttention fundamentally improves allocator stability and scalability.
+
+---
+
+# Fragmentation Charts
+
+## Successful Allocations
+
+![Fragmentation Success](results/charts/fragmentation_successful_allocations.png)
+
+---
+
+## Failed Allocations
+
+![Fragmentation Failures](results/charts/fragmentation_failed_allocations.png)
+
+---
+
+## Fragmentation Events
+
+![Fragmentation Events](results/charts/fragmentation_events.png)
+
+---
+
+## Peak Used Blocks
+
+![Peak Used Blocks](results/charts/fragmentation_peak_used_blocks.png)
+
 # Future Improvements
 
 Planned additions:
 
-* KV cache paging simulation
-* memory fragmentation modeling
 * dynamic token-level scheduling
 * speculative decoding simulation
 * multi-tenant serving workloads
