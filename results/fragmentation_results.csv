@@ -1,0 +1,9 @@
+allocator_type,total_blocks,successful_allocations,failed_allocations,fragmentation_events,final_free_blocks,peak_used_blocks
+contiguous,64,495,258,137,26,63
+paged,64,480,277,0,13,64
+contiguous,128,497,257,188,21,127
+paged,128,504,252,0,22,128
+contiguous,256,528,218,207,39,249
+paged,256,534,214,0,10,256
+contiguous,512,600,158,153,40,503
+paged,512,596,162,0,26,512
